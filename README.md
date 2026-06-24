@@ -29,60 +29,17 @@ Este projeto demonstra padrões empresariais para construir infraestrutura finan
 
 - **🚀 Primeiros Passos:** [Quick start em 5 minutos](docs/QUICKSTART.md)
 - **📖 Documentação Completa:** [Índice completo de docs](docs/README.md)
-- **🏗️ Arquitetura:** [Design de sistema e estrutura](docs/STRUCTURE.md)
+- **🏗️ Arquitetura:** [Arquitetura e Componentes do Sistema](docs/ARCHITECTURE.md)
 - **⚙️ Guia de Implementação:** [Workflow de desenvolvimento](docs/dev-team.md)
 - **🎓 Aprenda com Exemplos:** [Padrões de tratamento de erro](docs/ERROR_HANDLING_PATTERNS.md)
 
 ---
 
-## 🚀 Primeiros Passos (30 minutos)
+## 🚀 Primeiros Passos
 
-### 1. Pré-requisitos
-```bash
-# Necessário
-- Git
-- Docker & Docker Compose
-- Go 1.22+
-```
+O guia detalhado para iniciar a aplicação, configurar os containers e realizar a primeira transação está centralizado em nosso Quickstart:
 
-### 2. Clonar e Configurar
-```bash
-git clone https://github.com/seu-usuario/distributed-ledger-go.git
-cd distributed-ledger-go
-
-# Subir toda infraestrutura (Kafka, Postgres, Redis, Apps)
-docker-compose up -d
-
-# Aguardar serviços ficarem saudáveis (~30 segundos)
-docker ps | grep distributed
-```
-
-### 3. Fazer Sua Primeira Transação
-```bash
-# Criar uma transação
-curl -X POST http://localhost:8080/api/v1/transactions \
-  -H "Content-Type: application/json" \
-  -H "X-Idempotency-Key: chave-unica-123" \
-  -d '{
-    "account_id": "acc-001",
-    "amount_in_cents": 10000,
-    "type": "CREDIT",
-    "metadata": {"order_id": "order-456"}
-  }'
-
-# Resposta: 202 Accepted (processando) ou 200 OK (completo)
-```
-
-### 4. Verificar Estado do Ledger
-```bash
-# Consultar saldo da conta
-curl http://localhost:8888/admin/accounts/acc-001
-
-# Ver histórico de transações
-curl http://localhost:8888/admin/transactions?account_id=acc-001
-```
-
-👉 **[Guia completo de quick start →](docs/QUICKSTART.md)**
+👉 **[Guia rápido de inicialização →](docs/QUICKSTART.md)**
 
 ---
 
@@ -129,7 +86,7 @@ curl http://localhost:8888/admin/transactions?account_id=acc-001
 - **Event Sourcing:** Trilha de auditoria completa via log de eventos imutável
 - **Degradação Graciosa:** Padrão de Outbox local garante entrega mesmo se Kafka cair
 
-👉 **[Diagramas de arquitetura detalhados →](docs/ARCHITECTURE_FLOWS.md)**
+👉 **[Detalhes da Arquitetura e Fluxos →](docs/ARCHITECTURE.md)**
 
 ---
 
@@ -169,10 +126,9 @@ distributed-ledger-go/
 ├── docs/                          # Documentação completa
 │   ├── README.md                  # Hub de documentação
 │   ├── QUICKSTART.md              # Onboarding em 5 passos
-│   ├── STRUCTURE.md               # Layout monorepo & padrões
-│   ├── ARCHITECTURE_FLOWS.md      # 8 diagramas Mermaid
+│   ├── ARCHITECTURE.md            # Arquitetura, componentes e fluxos
+│   ├── API_REFERENCE.md           # Referência da API (Swagger/OpenAPI)
 │   ├── ERROR_HANDLING_PATTERNS.md # Matriz de erros + exemplos Go
-│   ├── system-design.md           # Deep dive técnico
 │   ├── business.md                # Visão, SLAs, stakeholders
 │   ├── dev-team.md                # Workflow do desenvolvedor
 │   ├── reference/                 # Contratos API, políticas
@@ -181,7 +137,7 @@ distributed-ledger-go/
 └── .github/workflows/             # Pipelines CI/CD
 ```
 
-👉 **[Guia completo de estrutura →](docs/STRUCTURE.md)**
+👉 **[Guia completo de arquitetura →](docs/ARCHITECTURE.md)**
 
 ---
 
@@ -273,10 +229,8 @@ Este projeto inclui documentação abrangente de tier-1:
 - **[Visão Geral](docs/README.md)** — Hub de documentação com navegação por role
 
 ### Para Engenheiros
-- **[Design de Sistema](docs/system-design.md)** — Deep dive técnico (DDL, eventos, padrões)
-- **[Guia de Estrutura](docs/STRUCTURE.md)** — Layout monorepo e como expandir
+- **[Arquitetura e Fluxos](docs/ARCHITECTURE.md)** — Deep dive técnico, componentes e diagramas Mermaid
 - **[Padrões de Tratamento de Erro](docs/ERROR_HANDLING_PATTERNS.md)** — Matriz + exemplos Go
-- **[Fluxos de Arquitetura](docs/ARCHITECTURE_FLOWS.md)** — 8 diagramas Mermaid
 
 ### Para Operações
 - **[Políticas Operacionais](docs/reference/operational-compliance-policy.md)** — SLAs, idempotência, compliance
@@ -322,7 +276,7 @@ Este projeto demonstra engenharia em nível Staff:
 Bem-vindo contribuições! Por favor siga estas diretrizes:
 
 ### Antes de Começar
-1. Leia [STRUCTURE.md](docs/STRUCTURE.md) para entender o layout do monorepo
+1. Leia [ARCHITECTURE.md](docs/ARCHITECTURE.md) para entender o layout do monorepo e os fluxos de eventos.
 2. Revise [ERROR_HANDLING_PATTERNS.md](docs/ERROR_HANDLING_PATTERNS.md)
 3. Verifique [dev-team.md](docs/dev-team.md) para convenções de workflow
 
@@ -398,7 +352,7 @@ Construído seguindo melhores práticas da indústria de:
 
 **Explore o codebase:**
 1. Comece com [QUICKSTART.md](docs/QUICKSTART.md)
-2. Leia [STRUCTURE.md](docs/STRUCTURE.md) para entender o layout
+2. Leia [ARCHITECTURE.md](docs/ARCHITECTURE.md) para entender a estrutura de serviços e fluxos
 3. Escolha sua área: [dev-team.md](docs/dev-team.md) para implementação, [playbooks/](docs/playbooks/) para operações
 
 **Contribua:**

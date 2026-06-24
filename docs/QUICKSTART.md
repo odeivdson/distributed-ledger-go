@@ -48,23 +48,26 @@ docker ps | grep distributed
 # - ledger-backoffice
 ```
 
-**Portas disponíveis:**
-- `http://localhost:8080` — Transaction Gateway (API)
-- `http://localhost:8081/backoffice` — Dashboard
-- `http://localhost:5432` — PostgreSQL
-- `http://localhost:9092` — Kafka
+**Portas disponíveis (clique nos links):**
+- **API Gateway:** [http://localhost:8080](http://localhost:8080) — Transaction Gateway
+- **Backoffice Dashboard:** [http://localhost:8081](http://localhost:8081) — Admin Dashboard
+- **Prometheus:** [http://localhost:9090](http://localhost:9090) — Métricas & Queries
+- **Alertmanager:** [http://localhost:9093](http://localhost:9093) — Gerenciador de Alertas
+- **Grafana:** [http://localhost:3000](http://localhost:3000) — Dashboards Visuais (admin/admin)
+- **PostgreSQL:** localhost:5432 — Banco de Dados
+- **Kafka:** kafka:29092 (interno) / localhost:9092 (externo)
 
 ---
 
 ## ⚡ Passo 3: Fazer sua Primeira Transação (5 min)
 
 ```bash
-# Terminal 1: Verificar health check
-curl -X GET http://localhost:8082/health
+# Terminal 1: Verificar health check do Gateway
+curl -X GET http://localhost:8080/health
 # Resultado esperado: {"status":"healthy"}
 
 # Terminal 1: Enviar uma transação
-curl -X POST http://localhost:8080/v1/transactions \
+curl -X POST http://localhost:8080/transactions \
   -H "Content-Type: application/json" \
   -d '{
     "source_account_id": "550e8400-e29b-41d4-a716-446655440000",
@@ -134,13 +137,13 @@ cd ../.. && go test ./apps/... ./shared/...
 Agora que o projeto está rodando, recomendamos:
 
 ### Entender a Arquitetura (30 min)
-Leia [`docs/ARCHITECTURE_FLOWS.md`](ARCHITECTURE_FLOWS.md) para ver:
+Leia [`docs/ARCHITECTURE.md`](ARCHITECTURE.md) para ver:
 - Fluxo de transação bem-sucedida
 - Fluxo de erro e DLQ
 - Fluxo de hot partition
 
 ### Criar seu Primeiro Caso de Uso (1 hora)
-Veja [`docs/IMPLEMENTATION_EXAMPLES.md`](IMPLEMENTATION_EXAMPLES.md) para aprender:
+Veja as documentações de arquitetura para aprender:
 - Como criar um novo usecase
 - Como implementar error handling com Outbox
 - Como escrever testes
@@ -152,10 +155,30 @@ Leia [`docs/reference/operational-compliance-policy.md`](reference/operational-c
 - Exemplo de requisição duplicada
 
 ### Explorar o Dashboard (10 min)
-Abra `http://localhost:8081/backoffice` e explore:
+Abra [http://localhost:8081](http://localhost:8081) e explore:
 - Dashboard executivo
 - Audit trail de contas
 - Monitor de DLQ
+
+### Explorar a API (10 min)
+
+#### Swagger UI (Parcial - gerado automaticamente)
+- URL: [http://localhost:8080/swagger/index.html](http://localhost:8080/swagger/index.html)
+- Endpoints: POST /accounts, POST /transactions, GET /transactions/{id}
+
+#### ReDoc + OpenAPI 3.0 (Completo) ⭐ **RECOMENDADO**
+```bash
+# Iniciar ReDoc em paralelo
+docker run -d \
+  -p 8888:80 \
+  -e SPEC_URL=/openapi.yaml \
+  -v $(pwd)/docs/openapi.yaml:/usr/share/nginx/html/openapi.yaml \
+  redocly/redoc
+```
+- URL: [http://localhost:8888](http://localhost:8888)
+- Endpoints: Todos (health, accounts, transactions, metrics)
+
+**Veja também:** [`API_REFERENCE.md`](API_REFERENCE.md) para detalhes sobre documentação da API
 
 ---
 
@@ -215,6 +238,8 @@ docker-compose logs ledger-core --tail 100
 | **SRE/Ops (Você quer operar)** | Aprender runbooks | [`playbooks/dlq-playbook.md`](playbooks/dlq-playbook.md) |
 | **Product (Você quer features)** | Entender SLAs | [`business.md`](business.md) |
 | **API Consumer (Você usa a API)** | Contratos de API | [`reference/technical-contracts.md`](reference/technical-contracts.md) |
+| **Monitoramento (Você cuida de observabilidade)** | Acessar sistemas | [`SYSTEM_ACCESS.md`](SYSTEM_ACCESS.md) |
+| **Documentação API/Swagger** | Testar endpoints e ver specs | [`API_REFERENCE.md`](API_REFERENCE.md) |
 
 ---
 
@@ -225,7 +250,7 @@ docker-compose logs ledger-core --tail 100
 - [ ] Logs mostram processamento (ver `docker logs -f ledger-core`)
 - [ ] Testes passam (rodar `go test ./...`)
 - [ ] Dashboard acessível (abrir `http://localhost:8081/backoffice`)
-- [ ] Leu [`ARCHITECTURE_FLOWS.md`](ARCHITECTURE_FLOWS.md)
+- [ ] Leu [`ARCHITECTURE.md`](ARCHITECTURE.md)
 
 Se todos os itens estão checkados, **parabéns! Você está pronto para contribuir** 🎉
 
@@ -240,7 +265,7 @@ R: Sim, mas você precisa instalar Postgres, Kafka e Redis manualmente. Não rec
 R: Veja [`ERROR_HANDLING_PATTERNS.md`](ERROR_HANDLING_PATTERNS.md) e [`playbooks/dlq-playbook.md`](playbooks/dlq-playbook.md).
 
 **P: Como criar um novo serviço no monorepo?**
-R: Veja [`IMPLEMENTATION_EXAMPLES.md`](IMPLEMENTATION_EXAMPLES.md) seção "Criar novo microserviço".
+R: Veja o guia de estrutura do projeto em [`ARCHITECTURE.md`](ARCHITECTURE.md) para melhores práticas.
 
 **P: Onde vejo as métricas?**
 R: Dashboard em `http://localhost:8081/backoffice` ou configure Prometheus/Grafana. Veja [`reference/observability.md`](reference/observability.md).

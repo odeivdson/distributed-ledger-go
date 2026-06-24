@@ -1,0 +1,343 @@
+openapi: 3.0.0
+info:
+  title: Transaction Gateway API
+  version: 1.0.0
+  description: Gateway de entrada para transações financeiras do Distributed Ledger
+  contact:
+    name: API Support
+    url: http://www.swagger.io/support
+    email: support@swagger.io
+  license:
+    name: MIT
+    url: https://opensource.org/licenses/MIT
+  termsOfService: http://swagger.io/terms/
+
+servers:
+  - url: http://localhost:8080
+    description: Local development
+  - url: http://api.example.com
+    description: Production
+
+paths:
+  /health:
+    get:
+      summary: Health check
+      description: Verifica se o serviço está funcionando corretamente
+      tags:
+        - health
+      responses:
+        '200':
+          description: Serviço saudável
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  status:
+                    type: string
+                    example: healthy
+                  service:
+                    type: string
+                    example: transaction-gateway
+                  timestamp:
+                    type: string
+                    format: date-time
+        '500':
+          description: Serviço indisponível
+          content:
+            text/plain:
+              schema:
+                type: string
+
+  /accounts:
+    post:
+      summary: Criar conta
+      description: Cria uma nova conta no sistema com saldo inicial
+      tags:
+        - accounts
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/AccountRequestDTO'
+      responses:
+        '201':
+          description: Conta criada com sucesso
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  account_id:
+                    type: string
+                    format: uuid
+                  status:
+                    type: string
+                    example: created
+        '400':
+          description: Requisição inválida (dados mal-formados ou faltando campos obrigatórios)
+          content:
+            text/plain:
+              schema:
+                type: string
+        '422':
+          description: Entidade não processável (validação falhada)
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  valid:
+                    type: boolean
+                    example: false
+                  errors:
+                    type: array
+                    items:
+                      type: object
+                      properties:
+                        field:
+                          type: string
+                        message:
+                          type: string
+                        code:
+                          type: string
+        '500':
+          description: Erro interno do servidor
+          content:
+            text/plain:
+              schema:
+                type: string
+
+  /transactions:
+    post:
+      summary: Enviar transação
+      description: Envia uma nova transação financeira para o sistema através do gateway
+      tags:
+        - transactions
+      parameters:
+        - name: X-Idempotency-Key
+          in: header
+          required: true
+          description: Chave única UUID para idempotência
+          schema:
+            type: string
+            format: uuid
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/TransactionRequestDTO'
+      responses:
+        '202':
+          description: Transação aceita para processamento
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  transaction_id:
+                    type: string
+                    format: uuid
+                  status:
+                    type: string
+                    example: accepted
+        '400':
+          description: Requisição inválida (dados mal-formados, faltando campos obrigatórios, ou header faltando)
+          content:
+            text/plain:
+              schema:
+                type: string
+        '422':
+          description: Entidade não processável (validação falhada)
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  valid:
+                    type: boolean
+                    example: false
+                  errors:
+                    type: array
+                    items:
+                      type: object
+                      properties:
+                        field:
+                          type: string
+                        message:
+                          type: string
+                        code:
+                          type: string
+        '429':
+          description: Rate limit excedido
+          content:
+            text/plain:
+              schema:
+                type: string
+        '500':
+          description: Erro interno do servidor
+          content:
+            text/plain:
+              schema:
+                type: string
+
+  /transactions/{id}:
+    get:
+      summary: Obter transação
+      description: Retorna os detalhes de uma transação específica pelo ID
+      tags:
+        - transactions
+      parameters:
+        - name: id
+          in: path
+          required: true
+          description: ID da transação (UUID)
+          schema:
+            type: string
+            format: uuid
+      responses:
+        '200':
+          description: Detalhes da transação
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/GetTransactionOutput'
+        '400':
+          description: ID inválido
+          content:
+            text/plain:
+              schema:
+                type: string
+        '404':
+          description: Transação não encontrada
+          content:
+            text/plain:
+              schema:
+                type: string
+        '500':
+          description: Erro interno do servidor
+          content:
+            text/plain:
+              schema:
+                type: string
+
+  /metrics:
+    get:
+      summary: Prometheus metrics
+      description: Retorna métricas Prometheus do serviço
+      tags:
+        - monitoring
+      responses:
+        '200':
+          description: Métricas em formato Prometheus
+          content:
+            text/plain:
+              schema:
+                type: string
+        '500':
+          description: Erro ao recuperar métricas
+          content:
+            text/plain:
+              schema:
+                type: string
+
+components:
+  schemas:
+    AccountRequestDTO:
+      type: object
+      required:
+        - account_id
+        - balance_in_cents
+      properties:
+        account_id:
+          type: string
+          format: uuid
+          description: ID único da conta
+          example: "550e8400-e29b-41d4-a716-446655440000"
+        balance_in_cents:
+          type: integer
+          format: int64
+          description: Saldo inicial em centavos
+          example: 50000
+
+    TransactionRequestDTO:
+      type: object
+      required:
+        - source_account_id
+        - target_account_id
+        - amount
+        - idempotency_key
+      properties:
+        source_account_id:
+          type: string
+          format: uuid
+          description: ID da conta de origem
+          example: "550e8400-e29b-41d4-a716-446655440000"
+        target_account_id:
+          type: string
+          format: uuid
+          description: ID da conta de destino
+          example: "6ba7b810-9dad-11d1-80b4-00c04fd430c8"
+        amount:
+          type: integer
+          format: int64
+          description: Valor da transação em centavos
+          example: 10000
+        idempotency_key:
+          type: string
+          minLength: 1
+          description: Chave única para idempotência (deve corresponder ao valor do header X-Idempotency-Key)
+          example: "txn-001-1234567890"
+        description:
+          type: string
+          description: Descrição da transação
+          example: "Pagamento de fatura"
+
+    GetTransactionOutput:
+      type: object
+      properties:
+        transaction_id:
+          type: string
+          format: uuid
+          description: ID único da transação
+          example: "f47ac10b-58cc-4372-a567-0e02b2c3d479"
+        source_account_id:
+          type: string
+          format: uuid
+          description: ID da conta de origem
+          example: "550e8400-e29b-41d4-a716-446655440000"
+        target_account_id:
+          type: string
+          format: uuid
+          description: ID da conta de destino
+          example: "6ba7b810-9dad-11d1-80b4-00c04fd430c8"
+        amount:
+          type: integer
+          format: int64
+          description: Valor da transação em centavos
+          example: 10000
+        description:
+          type: string
+          description: Descrição da transação
+          example: "Pagamento de fatura"
+        idempotency_key:
+          type: string
+          description: Chave de idempotência usada
+          example: "txn-001-1234567890"
+        created_at:
+          type: string
+          format: date-time
+          description: Timestamp de criação (ISO 8601)
+          example: "2026-06-24T10:00:00Z"
+
+tags:
+  - name: health
+    description: Verificação de saúde do serviço
+  - name: accounts
+    description: Operações com contas
+  - name: transactions
+    description: Operações com transações
+  - name: monitoring
+    description: Métricas e observabilidade
