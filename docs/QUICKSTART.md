@@ -14,6 +14,9 @@ Este guia prático o levará de zero até rodar o projeto localmente e fazer seu
 git clone https://github.com/seu-org/distributed-ledger-go.git
 cd distributed-ledger-go
 
+# Configurar variáveis de ambiente
+cp .env.example .env
+
 # Explorar a estrutura
 tree -L 2 apps/
 # Resultado esperado:
@@ -31,21 +34,23 @@ tree -L 2 apps/
 ## ⚡ Passo 2: Subir a Infraestrutura com Docker (10 min)
 
 ```bash
-# Subir Kafka, Postgres, Redis e todos os apps
-docker-compose up -d
+# Subir Kafka (com tópicos dinâmicos), Postgres (com healthcheck), Redis e todos os apps
+docker compose up -d --build
 
 # Verificar se tudo está rodando
-docker ps | grep distributed
+docker ps --format "{{.Names}}\t{{.Status}}"
 
-# Resultado esperado: 8 containers em "Up" status
-# - postgres
-# - kafka
+# Você verá os containers em status "Up" (inclusive o init-kafka será "Exited (0)" indicando sucesso):
+# - staff-postgres (healthy)
+# - staff-kafka
+# - init-kafka (Exited)
 # - redis
 # - transaction-gw
 # - ledger-core
 # - notification-service
 # - ledger-reconciler
 # - ledger-backoffice
+# - prometheus / grafana / alertmanager
 ```
 
 **Portas disponíveis (clique nos links):**
@@ -187,35 +192,35 @@ docker run -d \
 ### Docker não está rodando
 ```bash
 # Verificar status
-docker-compose ps
+docker compose ps
 
 # Se houver erro, verificar logs
-docker-compose logs postgres
+docker compose logs postgres
 
-# Recriar tudo do zero
-docker-compose down -v
-docker-compose up -d
+# Recriar tudo do zero (limpando volumes)
+docker compose down -v
+docker compose up -d --build
 ```
 
-### "Connection refused" na porta 8080
+### "Connection refused" na porta 8080 ou 8082
 ```bash
 # Verificar se o gateway está rodando
 docker ps | grep transaction-gw
 
-# Se não estiver, verificar erro
-docker-compose logs transaction-gw
+# Se não estiver, verificar logs (a subida pode estar travada no healthcheck do Postgres ou do init-kafka)
+docker compose logs transaction-gw
 
 # Verificar variáveis de ambiente
-cat docker-compose.yml | grep -A 5 "transaction-gw"
+grep -A 5 "transaction-gw" docker-compose.yaml
 ```
 
 ### Testes falhando com "database connection error"
 ```bash
-# Verificar se postgres está rodando
-docker-compose logs postgres
+# Verificar se postgres está rodando e saudavel
+docker compose logs postgres
 
 # Se erro de migração, executar manualmente
-docker-compose exec postgres psql -U staff_eng -d ledger_db < \
+docker compose exec postgres psql -U staff_eng -d ledger_db < \
   apps/ledger-core/internal/adapters/postgres/migrations/01_create_tables.sql
 ```
 
@@ -225,7 +230,7 @@ docker-compose exec postgres psql -U staff_eng -d ledger_db < \
 docker logs ledger-core | grep "Trabalhador de Outbox"
 
 # Se não houver logs, o worker pode estar falhando
-docker-compose logs ledger-core --tail 100
+docker compose logs ledger-core --tail 100
 ```
 
 ---
