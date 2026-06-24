@@ -22,6 +22,25 @@ services:
       KAFKA_LOG_DIRS: '/tmp/kraft-combined-logs'
       CLUSTER_ID: 'MkU3OEVBNTcwNTJENDM2Qk'
 
+  init-kafka:
+    image: confluentinc/cp-kafka:7.6.0
+    container_name: init-kafka
+    depends_on:
+      - kafka
+    entrypoint: [ '/bin/sh', '-c' ]
+    command: |
+      "
+      echo 'Waiting for Kafka to be ready...'
+      cub kafka-ready -b kafka:29092 1 20
+      
+      echo 'Creating kafka topics...'
+      kafka-topics --bootstrap-server kafka:29092 --create --if-not-exists --topic transactions --replication-factor 1 --partitions 1
+      kafka-topics --bootstrap-server kafka:29092 --create --if-not-exists --topic notifications --replication-factor 1 --partitions 1
+      
+      echo 'Successfully created topics:'
+      kafka-topics --bootstrap-server kafka:29092 --list
+      "
+
   postgres:
     image: postgres:16-alpine
     container_name: staff-postgres
@@ -77,9 +96,14 @@ services:
       DATABASE_URL: postgres://${DB_USER:-staff_eng}:${DB_PASSWORD:-super_secret_password}@postgres:5432/${DB_NAME:-ledger_db}?sslmode=disable
       LOG_LEVEL: ${LOG_LEVEL:-info}
     depends_on:
-      - kafka
-      - redis
-      - postgres
+      kafka:
+        condition: service_started
+      redis:
+        condition: service_started
+      postgres:
+        condition: service_started
+      init-kafka:
+        condition: service_completed_successfully
 
   ledger-core:
     build:
@@ -93,8 +117,12 @@ services:
       DATABASE_URL: postgres://${DB_USER:-staff_eng}:${DB_PASSWORD:-super_secret_password}@postgres:5432/${DB_NAME:-ledger_db}?sslmode=disable
       LOG_LEVEL: ${LOG_LEVEL:-info}
     depends_on:
-      - kafka
-      - postgres
+      kafka:
+        condition: service_started
+      postgres:
+        condition: service_started
+      init-kafka:
+        condition: service_completed_successfully
 
   notification-service:
     build:
@@ -107,7 +135,10 @@ services:
       KAFKA_BROKERS: ${DOCKER_KAFKA_BROKERS:-kafka:29092}
       LOG_LEVEL: ${LOG_LEVEL:-info}
     depends_on:
-      - kafka
+      kafka:
+        condition: service_started
+      init-kafka:
+        condition: service_completed_successfully
 
   ledger-reconciler:
     build:
