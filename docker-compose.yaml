@@ -28,11 +28,12 @@ services:
     ports:
       - "5432:5432"
     environment:
-      POSTGRES_USER: staff_eng
-      POSTGRES_PASSWORD: super_secret_password
-      POSTGRES_DB: ledger_db
+      POSTGRES_USER: ${DB_USER:-staff_eng}
+      POSTGRES_PASSWORD: ${DB_PASSWORD:-super_secret_password}
+      POSTGRES_DB: ${DB_NAME:-ledger_db}
     volumes:
       - pgdata:/var/lib/postgresql/data
+      - ./apps/ledger-core/internal/adapters/postgres/migrations:/docker-entrypoint-initdb.d
 
   redis:
     image: redis:7.2-alpine
@@ -43,6 +44,164 @@ services:
     volumes:
       - redisdata:/data
 
+  postgres-exporter:
+    image: prometheuscommunity/postgres-exporter:latest
+    container_name: postgres-exporter
+    environment:
+      DATA_SOURCE_NAME: postgresql://${DB_USER:-staff_eng}:${DB_PASSWORD:-super_secret_password}@postgres:5432/${DB_NAME:-ledger_db}?sslmode=disable
+    ports:
+      - "9187:9187"
+    depends_on:
+      - postgres
+
+  redis-exporter:
+    image: oliver006/redis_exporter:latest
+    container_name: redis-exporter
+    environment:
+      REDIS_ADDR: redis://redis:6379
+    ports:
+      - "9121:9121"
+    depends_on:
+      - redis
+
+  transaction-gw:
+    build:
+      context: .
+      dockerfile: apps/transaction-gw/Dockerfile
+    container_name: transaction-gw
+    ports:
+      - "${GW_PORT:-8080}:8080"
+    environment:
+      KAFKA_BROKERS: ${DOCKER_KAFKA_BROKERS:-kafka:29092}
+      REDIS_ADDR: ${DOCKER_REDIS_ADDR:-redis:6379}
+      DATABASE_URL: postgres://${DB_USER:-staff_eng}:${DB_PASSWORD:-super_secret_password}@postgres:5432/${DB_NAME:-ledger_db}?sslmode=disable
+      LOG_LEVEL: ${LOG_LEVEL:-info}
+    depends_on:
+      - kafka
+      - redis
+      - postgres
+
+  ledger-core:
+    build:
+      context: .
+      dockerfile: apps/ledger-core/Dockerfile
+    container_name: ledger-core
+    ports:
+      - "${CORE_PORT:-8082}:8082"
+    environment:
+      KAFKA_BROKERS: ${DOCKER_KAFKA_BROKERS:-kafka:29092}
+      DATABASE_URL: postgres://${DB_USER:-staff_eng}:${DB_PASSWORD:-super_secret_password}@postgres:5432/${DB_NAME:-ledger_db}?sslmode=disable
+      LOG_LEVEL: ${LOG_LEVEL:-info}
+    depends_on:
+      - kafka
+      - postgres
+
+  notification-service:
+    build:
+      context: .
+      dockerfile: apps/notification-service/Dockerfile
+    container_name: notification-service
+    ports:
+      - "${NOTIF_PORT:-8083}:8083"
+    environment:
+      KAFKA_BROKERS: ${DOCKER_KAFKA_BROKERS:-kafka:29092}
+      LOG_LEVEL: ${LOG_LEVEL:-info}
+    depends_on:
+      - kafka
+
+  ledger-reconciler:
+    build:
+      context: .
+      dockerfile: apps/ledger-reconciler/Dockerfile
+    container_name: ledger-reconciler
+    ports:
+      - "${RECON_PORT:-8084}:8084"
+    environment:
+      DATABASE_URL: postgres://${DB_USER:-staff_eng}:${DB_PASSWORD:-super_secret_password}@postgres:5432/${DB_NAME:-ledger_db}?sslmode=disable
+      LOG_LEVEL: ${LOG_LEVEL:-info}
+    depends_on:
+      - postgres
+
+  ledger-backoffice:
+    build:
+      context: .
+      dockerfile: apps/ledger-backoffice/Dockerfile
+    container_name: ledger-backoffice
+    ports:
+      - "${BACKOFFICE_PORT:-8081}:8081"
+    environment:
+      DATABASE_URL: postgres://${DB_USER:-staff_eng}:${DB_PASSWORD:-super_secret_password}@postgres:5432/${DB_NAME:-ledger_db}?sslmode=disable
+      REDIS_ADDR: ${DOCKER_REDIS_ADDR:-redis:6379}
+      PORT: 8081
+      LOG_LEVEL: ${LOG_LEVEL:-info}
+    depends_on:
+      - postgres
+      - redis
+
+  prometheus:
+    image: prom/prometheus:latest
+    container_name: prometheus
+    ports:
+      - "${PROMETHEUS_PORT:-9090}:9090"
+    volumes:
+      - ./prometheus/config/prometheus.yml:/etc/prometheus/prometheus.yml:ro
+      - ./prometheus/rules:/etc/prometheus/rules:ro
+      - prometheus_data:/prometheus
+    command:
+      - '--config.file=/etc/prometheus/prometheus.yml'
+      - '--storage.tsdb.path=/prometheus'
+      - '--web.console.libraries=/usr/share/prometheus/console_libraries'
+      - '--web.console.templates=/usr/share/prometheus/consoles'
+      - '--storage.tsdb.retention.time=30d'
+    depends_on:
+      - transaction-gw
+      - ledger-core
+      - postgres-exporter
+      - redis-exporter
+
+  alertmanager:
+    image: prom/alertmanager:latest
+    container_name: alertmanager
+    ports:
+      - "${ALERTMANAGER_PORT:-9093}:9093"
+    volumes:
+      - ./alertmanager/config/alertmanager.yml:/etc/alertmanager/alertmanager.yml:ro
+      - ./alertmanager/templates:/etc/alertmanager/templates:ro
+      - alertmanager_data:/alertmanager
+    command:
+      - '--config.file=/etc/alertmanager/alertmanager.yml'
+      - '--storage.path=/alertmanager'
+    environment:
+      - SLACK_WEBHOOK_URL=${SLACK_WEBHOOK_URL:-}
+      - PAGERDUTY_SERVICE_KEY=${PAGERDUTY_SERVICE_KEY:-}
+      - ALERT_EMAIL=${ALERT_EMAIL:-admin@example.com}
+      - ALERT_FROM_EMAIL=${ALERT_FROM_EMAIL:-alertmanager@example.com}
+      - SMTP_HOST=${SMTP_HOST:-}
+      - SMTP_PORT=${SMTP_PORT:-587}
+      - SMTP_USER=${SMTP_USER:-}
+      - SMTP_PASSWORD=${SMTP_PASSWORD:-}
+
+  grafana:
+    image: grafana/grafana:latest
+    container_name: grafana
+    ports:
+      - "${GRAFANA_PORT:-3000}:3000"
+    volumes:
+      - grafana_data:/var/lib/grafana
+      - ./grafana/dashboards:/var/lib/grafana/dashboards:ro
+      - ./grafana/provisioning:/etc/grafana/provisioning:ro
+    environment:
+      - GF_SECURITY_ADMIN_USER=${GRAFANA_ADMIN_USER:-admin}
+      - GF_SECURITY_ADMIN_PASSWORD=${GRAFANA_ADMIN_PASSWORD:-admin}
+      - GF_INSTALL_PLUGINS=grafana-clock-panel,grafana-simple-json-datasource,grafana-worldmap-panel
+      - GF_USERS_ALLOW_SIGN_UP=${GF_USERS_ALLOW_SIGN_UP:-false}
+      - GF_DASHBOARDS_DEFAULT_HOME_DASHBOARD_PATH=/var/lib/grafana/dashboards/distributed-ledger.json
+    depends_on:
+      - prometheus
+
 volumes:
   pgdata:
   redisdata:
+  prometheus_data:
+  alertmanager_data:
+  grafana_data:
