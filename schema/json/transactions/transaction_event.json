@@ -1,0 +1,48 @@
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "title": "TransactionEvent",
+  "type": "object",
+  "required": [
+    "id",
+    "source_account_id",
+    "target_account_id",
+    "amount",
+    "idempotency_key",
+    "created_at"
+  ],
+  "properties": {
+    "id": {
+      "type": "string",
+      "format": "uuid",
+      "description": "ID da transação gerado no gateway"
+    },
+    "source_account_id": {
+      "type": "string",
+      "format": "uuid",
+      "description": "ID da conta de origem (débito)"
+    },
+    "target_account_id": {
+      "type": "string",
+      "format": "uuid",
+      "description": "ID da conta de destino (crédito)"
+    },
+    "amount": {
+      "type": "integer",
+      "minimum": 1,
+      "description": "Valor em centavos da transferência"
+    },
+    "idempotency_key": {
+      "type": "string",
+      "description": "Chave de idempotência para processamento at-most-once no core"
+    },
+    "description": {
+      "type": "string",
+      "description": "Descrição da transação"
+    },
+    "created_at": {
+      "type": "string",
+      "format": "date-time",
+      "description": "Timestamp de criação no gateway"
+    }
+  }
+}

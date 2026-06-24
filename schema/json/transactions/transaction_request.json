@@ -1,0 +1,36 @@
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "title": "TransactionRequest",
+  "type": "object",
+  "required": [
+    "source_account_id",
+    "target_account_id",
+    "amount",
+    "idempotency_key"
+  ],
+  "properties": {
+    "source_account_id": {
+      "type": "string",
+      "format": "uuid",
+      "description": "ID da conta de origem (débito)"
+    },
+    "target_account_id": {
+      "type": "string",
+      "format": "uuid",
+      "description": "ID da conta de destino (crédito)"
+    },
+    "amount": {
+      "type": "integer",
+      "minimum": 1,
+      "description": "Valor em centavos a ser transferido"
+    },
+    "idempotency_key": {
+      "type": "string",
+      "description": "Chave de idempotência única para evitar reprocessamento"
+    },
+    "description": {
+      "type": "string",
+      "description": "Descrição opcional da transação"
+    }
+  }
+}
