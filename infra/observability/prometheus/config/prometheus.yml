@@ -1,0 +1,60 @@
+global:
+  scrape_interval: 15s
+  evaluation_interval: 15s
+  external_labels:
+    monitor: 'distributed-ledger-monitor'
+
+alerting:
+  alertmanagers:
+    - static_configs:
+        - targets:
+            - alertmanager:9093
+
+rule_files:
+  - '/etc/prometheus/rules/distributed-ledger.yml'
+  - '/etc/prometheus/rules/system.yml'
+
+scrape_configs:
+  - job_name: 'prometheus'
+    static_configs:
+      - targets: ['localhost:9090']
+
+  - job_name: 'transaction-gw'
+    static_configs:
+      - targets: ['transaction-gw:8080']
+    metrics_path: '/metrics'
+    scrape_interval: 5s
+
+  - job_name: 'ledger-core'
+    static_configs:
+      - targets: ['ledger-core:8082']
+    metrics_path: '/metrics'
+    scrape_interval: 5s
+
+  - job_name: 'notification-service'
+    static_configs:
+      - targets: ['notification-service:8083']
+    metrics_path: '/metrics'
+    scrape_interval: 5s
+
+  - job_name: 'ledger-reconciler'
+    static_configs:
+      - targets: ['ledger-reconciler:8084']
+    metrics_path: '/metrics'
+    scrape_interval: 5s
+
+  - job_name: 'ledger-backoffice'
+    static_configs:
+      - targets: ['ledger-backoffice:8081']
+    metrics_path: '/metrics'
+    scrape_interval: 5s
+
+  - job_name: 'postgres'
+    static_configs:
+      - targets: ['postgres-exporter:9187']
+    scrape_interval: 5s
+
+  - job_name: 'redis'
+    static_configs:
+      - targets: ['redis-exporter:9121']
+    scrape_interval: 5s

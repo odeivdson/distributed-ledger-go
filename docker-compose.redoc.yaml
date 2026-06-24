@@ -1,0 +1,18 @@
+version: '3.8'
+
+services:
+  redoc:
+    image: redocly/redoc:latest
+    container_name: redoc-api-docs
+    ports:
+      - "8888:80"
+    environment:
+      SPEC_URL: /openapi.yaml
+    volumes:
+      - ./docs/openapi.yaml:/usr/share/nginx/html/openapi.yaml:ro
+    networks:
+      - ledger-network
+
+networks:
+  ledger-network:
+    external: true

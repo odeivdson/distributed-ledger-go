@@ -1,0 +1,168 @@
+basePath: /
+definitions:
+  http.AccountRequestDTO:
+    properties:
+      account_id:
+        type: string
+      balance_in_cents:
+        type: integer
+    type: object
+  http.GetTransactionOutput:
+    properties:
+      amount:
+        type: integer
+      created_at:
+        type: string
+      description:
+        type: string
+      idempotency_key:
+        type: string
+      source_account_id:
+        type: string
+      target_account_id:
+        type: string
+      transaction_id:
+        type: string
+    type: object
+  http.TransactionRequestDTO:
+    properties:
+      amount:
+        type: integer
+      description:
+        type: string
+      idempotency_key:
+        type: string
+      source_account_id:
+        type: string
+      target_account_id:
+        type: string
+    type: object
+host: localhost:8080
+info:
+  contact:
+    email: support@swagger.io
+    name: API Support
+    url: http://www.swagger.io/support
+  description: Gateway de entrada para transações financeiras do Distributed Ledger.
+  license:
+    name: MIT
+    url: https://opensource.org/licenses/MIT
+  termsOfService: http://swagger.io/terms/
+  title: Transaction Gateway API
+  version: "1.0"
+paths:
+  /accounts:
+    post:
+      consumes:
+      - application/json
+      description: Cria uma nova conta no sistema com saldo inicial.
+      parameters:
+      - description: Detalhes da conta
+        in: body
+        name: account
+        required: true
+        schema:
+          $ref: '#/definitions/http.AccountRequestDTO'
+      produces:
+      - application/json
+      responses:
+        "201":
+          description: Created
+          schema:
+            additionalProperties:
+              type: string
+            type: object
+        "400":
+          description: Requisição inválida
+          schema:
+            type: string
+        "422":
+          description: Validação falhada
+          schema:
+            additionalProperties: true
+            type: object
+        "500":
+          description: Erro interno
+          schema:
+            type: string
+      summary: Criar conta
+      tags:
+      - accounts
+  /transactions:
+    post:
+      consumes:
+      - application/json
+      description: Envia uma nova transação financeira para o sistema através do gateway.
+      parameters:
+      - description: Chave única UUID para idempotência
+        in: header
+        name: X-Idempotency-Key
+        required: true
+        type: string
+      - description: Detalhes da transação
+        in: body
+        name: transaction
+        required: true
+        schema:
+          $ref: '#/definitions/http.TransactionRequestDTO'
+      produces:
+      - application/json
+      responses:
+        "202":
+          description: Accepted
+          schema:
+            additionalProperties:
+              type: string
+            type: object
+        "400":
+          description: Requisição inválida ou header faltando
+          schema:
+            type: string
+        "422":
+          description: Validação falhada
+          schema:
+            additionalProperties: true
+            type: object
+        "429":
+          description: Rate limit excedido
+          schema:
+            type: string
+        "500":
+          description: Erro interno
+          schema:
+            type: string
+      summary: Enviar transação
+      tags:
+      - transactions
+  /transactions/{id}:
+    get:
+      description: Retorna os detalhes de uma transação específica pelo ID.
+      parameters:
+      - description: ID da transação (UUID)
+        in: path
+        name: id
+        required: true
+        type: string
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            $ref: '#/definitions/http.GetTransactionOutput'
+        "400":
+          description: ID inválido
+          schema:
+            type: string
+        "404":
+          description: Transação não encontrada
+          schema:
+            type: string
+        "500":
+          description: Erro interno
+          schema:
+            type: string
+      summary: Obter transação
+      tags:
+      - transactions
+swagger: "2.0"

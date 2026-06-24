@@ -155,7 +155,7 @@ Resultado da Transação (Notificação)
 
 8) Governança e ciclo de vida
 
-- Mudanças de esquema requerem: diff de esquema, validação de compatibilidade, plano de migração, plano de atualização de consumidores e verificações de CI. Publique artefatos canônicos em `/schema/`.
+- Mudanças de esquema requerem: diff de esquema, validação de compatibilidade, plano de migração, plano de atualização de consumidores e verificações de CI. Publique artefatos canônicos em `shared/schema/`.
 - Proprietários: API Guild para esquemas, Ledger Team para lógica central, SRE/Plataforma para runbooks/alertas, Produto/Compliance para retenção e SLAs.
 
 9) Segurança e conformidade
@@ -298,6 +298,7 @@ O projeto **Distributed Ledger Go** é um ecossistema completo de ledger distrib
 │   ├── contracts/                     Event contracts & schemas
 │   │   ├── events.go                  Domain events
 │   │   └── transaction_v1.go          Transaction event versioning
+│   ├── schema/                        JSON schemas & validation
 │   ├── models/                        DTOs & value objects
 │   │   ├── transaction.go
 │   │   └── ledger_entry.go
@@ -314,12 +315,8 @@ O projeto **Distributed Ledger Go** é um ecossistema completo de ledger distrib
 │   ├── 01_initial_schema.sql
 │   ├── 02_outbox_table.sql
 │   └── 03_outbox_failed_events.sql
-├── schema/                            JSON schemas & validation
-│   ├── json/
-│   │   └── transactions/
-│   │       ├── request.schema.json
-│   │       └── response.schema.json
-│   └── proto/                         Protocol buffers (future)
+├── infra/                             Configurações de infraestrutura e deploy
+│   └── observability/                 Prometheus, Grafana, Alertmanager
 ├── docs/                              Complete documentation
 │   ├── README.md                      Documentation index
 │   ├── QUICKSTART.md                  5-step onboarding
@@ -550,7 +547,7 @@ apps/ledger-core/internal/
 - `/test/` — integration & contract tests
 - `/web/` — static assets, HTML templates (for backoffice only)
 - `/migrations/` — SQL migration scripts
-- `/schema/` — JSON/Proto schemas
+- `shared/schema/` — JSON/Proto schemas
 
 ---
 

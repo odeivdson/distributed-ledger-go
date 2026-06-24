@@ -1,0 +1,130 @@
+groups:
+  - name: system_alerts
+    interval: 30s
+    rules:
+      - alert: HighCPUUsage
+        expr: '(100 - (avg by (instance) (irate(node_cpu_seconds_total{mode="idle"}[5m])) * 100)) > 80'
+        for: 5m
+        labels:
+          severity: warning
+          component: infrastructure
+        annotations:
+          summary: "High CPU usage on {{ $labels.instance }}"
+          description: "CPU usage is {{ $value | humanize }}% which exceeds 80% threshold"
+
+      - alert: CriticalCPUUsage
+        expr: '(100 - (avg by (instance) (irate(node_cpu_seconds_total{mode="idle"}[5m])) * 100)) > 95'
+        for: 2m
+        labels:
+          severity: critical
+          component: infrastructure
+        annotations:
+          summary: "Critical CPU usage on {{ $labels.instance }}"
+          description: "CPU usage is {{ $value | humanize }}% which exceeds 95% threshold"
+
+      - alert: HighDiskUsage
+        expr: '(node_filesystem_avail_bytes{mountpoint="/"} / node_filesystem_size_bytes{mountpoint="/"}) < 0.2'
+        for: 5m
+        labels:
+          severity: warning
+          component: infrastructure
+        annotations:
+          summary: "High disk usage on {{ $labels.instance }}"
+          description: "Only {{ $value | humanizePercentage }} of disk space remaining"
+
+      - alert: CriticalDiskUsage
+        expr: '(node_filesystem_avail_bytes{mountpoint="/"} / node_filesystem_size_bytes{mountpoint="/"}) < 0.05'
+        for: 2m
+        labels:
+          severity: critical
+          component: infrastructure
+        annotations:
+          summary: "Critical disk usage on {{ $labels.instance }}"
+          description: "Only {{ $value | humanizePercentage }} of disk space remaining"
+
+      - alert: HighSwapUsage
+        expr: '((node_memory_SwapTotal_bytes - node_memory_SwapFree_bytes) / node_memory_SwapTotal_bytes) > 0.8'
+        for: 5m
+        labels:
+          severity: warning
+          component: infrastructure
+        annotations:
+          summary: "High swap usage on {{ $labels.instance }}"
+          description: "{{ $value | humanizePercentage }} of swap space is being used"
+
+      - alert: NodeNotReady
+        expr: 'kube_node_status_condition{condition="Ready",status="true"} == 0'
+        for: 5m
+        labels:
+          severity: critical
+          component: infrastructure
+        annotations:
+          summary: "Node {{ $labels.node }} is not ready"
+          description: "Kubernetes node {{ $labels.node }} is not in Ready state"
+
+      - alert: PodCrashLooping
+        expr: 'rate(kube_pod_container_status_restarts_total[5m]) > 0.1'
+        for: 5m
+        labels:
+          severity: critical
+          component: infrastructure
+        annotations:
+          summary: "Pod {{ $labels.pod }} is crash looping"
+          description: "Pod {{ $labels.pod }} is restarting frequently"
+
+      - alert: NetworkPacketsDropped
+        expr: 'rate(node_network_receive_drop_total[5m]) > 0 or rate(node_network_transmit_drop_total[5m]) > 0'
+        for: 5m
+        labels:
+          severity: warning
+          component: infrastructure
+        annotations:
+          summary: "Network packets dropped on {{ $labels.instance }}"
+          description: "Network packets are being dropped on {{ $labels.instance }}"
+
+      - alert: NetworkPacketsError
+        expr: 'rate(node_network_receive_errs_total[5m]) > 0 or rate(node_network_transmit_errs_total[5m]) > 0'
+        for: 5m
+        labels:
+          severity: warning
+          component: infrastructure
+        annotations:
+          summary: "Network errors on {{ $labels.instance }}"
+          description: "Network errors detected on {{ $labels.instance }}"
+
+      - alert: FileDescriptorsUsage
+        expr: '(process_open_fds / process_max_fds) > 0.85'
+        for: 5m
+        labels:
+          severity: warning
+          component: infrastructure
+        annotations:
+          summary: "High file descriptors usage on {{ $labels.instance }}"
+          description: "{{ $value | humanizePercentage }} of available file descriptors are in use"
+
+  - name: system_recording_rules
+    interval: 30s
+    rules:
+      - record: cpu:usage_percentage:5m
+        expr: '100 - (avg by (instance) (irate(node_cpu_seconds_total{mode="idle"}[5m])) * 100)'
+
+      - record: memory:usage_percentage:5m
+        expr: '100 * (1 - ((node_memory_MemAvailable_bytes) / (node_memory_MemTotal_bytes)))'
+
+      - record: disk:usage_percentage:5m
+        expr: '100 * ((node_filesystem_size_bytes{mountpoint="/"} - node_filesystem_avail_bytes{mountpoint="/"}) / node_filesystem_size_bytes{mountpoint="/"})'
+
+      - record: network:in_bytes:5m
+        expr: 'sum(rate(node_network_receive_bytes_total[5m])) by (instance)'
+
+      - record: network:out_bytes:5m
+        expr: 'sum(rate(node_network_transmit_bytes_total[5m])) by (instance)'
+
+      - record: load_average:1m
+        expr: 'node_load1'
+
+      - record: load_average:5m
+        expr: 'node_load5'
+
+      - record: load_average:15m
+        expr: 'node_load15'

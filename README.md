@@ -116,13 +116,15 @@ distributed-ledger-go/
 │   ├── notification-service/      # Consumer evento com worker pool
 │   ├── ledger-reconciler/         # Auditor em batch (eventual consistency)
 │   └── ledger-backoffice/         # Dashboard administrativo (server-rendered)
+├── infra/                         # Configurações de infraestrutura e deploy
+│   └── observability/             # Prometheus, Grafana, Alertmanager
 ├── shared/                        # Pacotes compartilhados
 │   ├── contracts/                 # Contratos de eventos & schemas
 │   ├── models/                    # DTOs & value objects
 │   ├── clients/                   # Clientes de infraestrutura
+│   ├── schema/                    # Schemas JSON & definições protobuf
 │   └── middleware/                # Preocupações transversais
 ├── migrations/                    # Schema de banco & evolução
-├── schema/                        # Schemas JSON & definições protobuf
 ├── docs/                          # Documentação completa
 │   ├── README.md                  # Hub de documentação
 │   ├── QUICKSTART.md              # Onboarding em 5 passos

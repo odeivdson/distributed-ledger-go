@@ -1,0 +1,45 @@
+{{define "content"}}
+<div class="space-y-8">
+    <header>
+        <h1 class="text-3xl font-bold">Gerenciador de Mensagens & DLQ</h1>
+        <p class="text-slate-400">Monitoramento de anomalias de integração e falhas de processamento assíncrono.</p>
+    </header>
+
+    <div class="grid grid-cols-1 md:grid-cols-2 gap-6">
+        <div class="bg-slate-800 p-8 rounded-xl border border-slate-700 shadow-lg flex flex-col items-center justify-center text-center">
+            <div class="w-16 h-16 bg-rose-500/20 text-rose-500 rounded-full flex items-center justify-center mb-4">
+                <svg class="w-8 h-8" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z"></path></svg>
+            </div>
+            <h2 class="text-xl font-semibold mb-2">Dead Letter Queue (DLQ)</h2>
+            <p class="text-slate-400 text-sm mb-6">Mensagens do <code>notification-service</code> que falharam após todas as retentativas.</p>
+            <div class="text-5xl font-bold text-rose-500 mb-2">{{.DLQVolume}}</div>
+            <span class="text-slate-500 text-xs uppercase tracking-widest font-bold">Mensagens Represadas</span>
+            
+            <button disabled class="mt-8 w-full bg-slate-700 text-slate-400 cursor-not-allowed font-bold py-3 px-6 rounded-lg transition">
+                Processar DLQ (Em Breve)
+            </button>
+        </div>
+
+        <div class="space-y-6">
+            <div class="bg-slate-800 p-6 rounded-xl border border-slate-700 shadow-lg">
+                <h3 class="font-bold text-sky-400 mb-2 flex items-center">
+                    <svg class="w-5 h-5 mr-2" fill="currentColor" viewBox="0 0 20 20"><path fill-rule="evenodd" d="M18 10a8 8 0 11-16 0 8 8 0 0116 0zm-7-4a1 1 0 11-2 0 1 1 0 012 0zM9 9a1 1 0 000 2v3a1 1 0 001 1h1a1 1 0 100-2v-3a1 1 0 00-1-1H9z" clip-rule="evenodd"></path></svg>
+                    O que é a DLQ?
+                </h3>
+                <p class="text-sm text-slate-300 leading-relaxed">
+                    Quando o motor de notificações não consegue entregar um webhook após o backoff exponencial, a mensagem é movida para este tópico especial. Isso evita o bloqueio da fila principal e permite auditoria posterior.
+                </p>
+            </div>
+            <div class="bg-slate-800 p-6 rounded-xl border border-slate-700 shadow-lg">
+                <h3 class="font-bold text-amber-400 mb-2 flex items-center">
+                    <svg class="w-5 h-5 mr-2" fill="currentColor" viewBox="0 0 20 20"><path d="M10 2a6 6 0 00-6 6v3.586l-.707.707A1 1 0 004 14h12a1 1 0 00.707-1.707L16 11.586V8a6 6 0 00-6-6zM10 18a3 3 0 01-3-3h6a3 3 0 01-3 3z"></path></svg>
+                    Alertas de Operação
+                </h3>
+                <p class="text-sm text-slate-300">
+                    Se o volume da DLQ exceder 100 mensagens em 5 minutos, um alerta crítico é disparado para o time de SRE.
+                </p>
+            </div>
+        </div>
+    </div>
+</div>
+{{end}}

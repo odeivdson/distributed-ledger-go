@@ -1,0 +1,187 @@
+groups:
+  - name: distributed_ledger_alerts
+    interval: 30s
+    rules:
+      - alert: HighLatencyTransaction
+        expr: 'histogram_quantile(0.99, rate(transaction_gw_request_duration_seconds_bucket[5m])) > 0.5'
+        for: 2m
+        labels:
+          severity: warning
+          component: transaction-gw
+        annotations:
+          summary: "High latency detected in transaction gateway"
+          description: "P99 latency is {{ $value | humanizeDuration }} which exceeds 500ms threshold"
+
+      - alert: CriticalLatencyTransaction
+        expr: 'histogram_quantile(0.99, rate(transaction_gw_request_duration_seconds_bucket[5m])) > 1.0'
+        for: 1m
+        labels:
+          severity: critical
+          component: transaction-gw
+        annotations:
+          summary: "Critical latency detected in transaction gateway"
+          description: "P99 latency is {{ $value | humanizeDuration }} which exceeds 1s threshold"
+
+      - alert: HighErrorRate
+        expr: 'rate(transaction_gw_requests_total{status=~"5.."}[5m]) > 0.05'
+        for: 2m
+        labels:
+          severity: warning
+          component: transaction-gw
+        annotations:
+          summary: "High error rate in transaction gateway"
+          description: "Error rate is {{ $value | humanizePercentage }} which exceeds 5% threshold"
+
+      - alert: CriticalErrorRate
+        expr: 'rate(transaction_gw_requests_total{status=~"5.."}[5m]) > 0.10'
+        for: 1m
+        labels:
+          severity: critical
+          component: transaction-gw
+        annotations:
+          summary: "Critical error rate in transaction gateway"
+          description: "Error rate is {{ $value | humanizePercentage }} which exceeds 10% threshold"
+
+      - alert: CircuitBreakerOpen
+        expr: 'circuit_breaker_state{state="OPEN"} > 0'
+        for: 1m
+        labels:
+          severity: critical
+          component: resilience
+        annotations:
+          summary: "Circuit breaker is OPEN"
+          description: "Circuit breaker {{ $labels.service }} is in OPEN state. Service {{ $labels.service }} may be unavailable."
+
+      - alert: CircuitBreakerHalfOpen
+        expr: 'circuit_breaker_state{state="HALF_OPEN"} > 0'
+        for: 2m
+        labels:
+          severity: warning
+          component: resilience
+        annotations:
+          summary: "Circuit breaker is in HALF_OPEN state"
+          description: "Circuit breaker {{ $labels.service }} is testing recovery. Limited requests are allowed."
+
+      - alert: HighMemoryUsage
+        expr: 'container_memory_usage_bytes / container_spec_memory_limit_bytes > 0.8'
+        for: 3m
+        labels:
+          severity: warning
+          component: infrastructure
+        annotations:
+          summary: "High memory usage detected"
+          description: "Container {{ $labels.container_name }} is using {{ $value | humanizePercentage }} of available memory"
+
+      - alert: CriticalMemoryUsage
+        expr: 'container_memory_usage_bytes / container_spec_memory_limit_bytes > 0.95'
+        for: 1m
+        labels:
+          severity: critical
+          component: infrastructure
+        annotations:
+          summary: "Critical memory usage detected"
+          description: "Container {{ $labels.container_name }} is using {{ $value | humanizePercentage }} of available memory"
+
+      - alert: DatabaseConnectionPoolExhausted
+        expr: 'database_connections_active / database_connections_max > 0.9'
+        for: 2m
+        labels:
+          severity: critical
+          component: database
+        annotations:
+          summary: "Database connection pool nearly exhausted"
+          description: "Database is using {{ $value | humanizePercentage }} of available connections"
+
+      - alert: DatabaseSlowQueries
+        expr: 'rate(database_query_duration_seconds_bucket{le="1"}[5m]) < 0.5'
+        for: 2m
+        labels:
+          severity: warning
+          component: database
+        annotations:
+          summary: "High number of slow database queries"
+          description: "{{ $value | humanizePercentage }} of queries are taking longer than 1 second"
+
+      - alert: KafkaProducerErrors
+        expr: 'rate(kafka_producer_errors_total[5m]) > 0.01'
+        for: 2m
+        labels:
+          severity: warning
+          component: kafka
+        annotations:
+          summary: "High Kafka producer error rate"
+          description: "Kafka producer errors are occurring at {{ $value }} errors/sec"
+
+      - alert: KafkaConsumerLagHigh
+        expr: 'kafka_consumer_lag > 1000'
+        for: 5m
+        labels:
+          severity: warning
+          component: kafka
+        annotations:
+          summary: "High Kafka consumer lag detected"
+          description: "Consumer group {{ $labels.group }} is lagging by {{ $value }} messages"
+
+      - alert: RedisConnectionErrors
+        expr: 'rate(redis_connection_errors_total[5m]) > 0'
+        for: 2m
+        labels:
+          severity: warning
+          component: redis
+        annotations:
+          summary: "Redis connection errors detected"
+          description: "Redis is experiencing connection errors at {{ $value }} errors/sec"
+
+      - alert: ValidationFailureRateHigh
+        expr: 'rate(validation_failures_total[5m]) > 0.02'
+        for: 3m
+        labels:
+          severity: warning
+          component: validation
+        annotations:
+          summary: "High validation failure rate"
+          description: "Validation failures are at {{ $value | humanizePercentage }} which exceeds 2% threshold"
+
+      - alert: IdempotencyFailureDetected
+        expr: 'rate(idempotency_check_failures_total[5m]) > 0'
+        for: 2m
+        labels:
+          severity: warning
+          component: idempotency
+        annotations:
+          summary: "Idempotency check failures detected"
+          description: "{{ $value }} idempotency check failures detected per second"
+
+      - alert: ServiceDown
+        expr: 'up{job!="prometheus"} == 0'
+        for: 1m
+        labels:
+          severity: critical
+          component: infrastructure
+        annotations:
+          summary: "Service {{ $labels.job }} is down"
+          description: "{{ $labels.job }} has been unreachable for more than 1 minute"
+
+  - name: distributed_ledger_recording_rules
+    interval: 30s
+    rules:
+      - record: transaction_gw:error_rate:5m
+        expr: 'sum(rate(transaction_gw_requests_total{status=~"5.."}[5m])) by (instance) / sum(rate(transaction_gw_requests_total[5m])) by (instance)'
+
+      - record: transaction_gw:latency_p99:5m
+        expr: 'histogram_quantile(0.99, sum(rate(transaction_gw_request_duration_seconds_bucket[5m])) by (le, instance))'
+
+      - record: transaction_gw:latency_p95:5m
+        expr: 'histogram_quantile(0.95, sum(rate(transaction_gw_request_duration_seconds_bucket[5m])) by (le, instance))'
+
+      - record: transaction_gw:latency_p50:5m
+        expr: 'histogram_quantile(0.50, sum(rate(transaction_gw_request_duration_seconds_bucket[5m])) by (le, instance))'
+
+      - record: ledger_core:error_rate:5m
+        expr: 'sum(rate(ledger_core_requests_total{status=~"5.."}[5m])) by (instance) / sum(rate(ledger_core_requests_total[5m])) by (instance)'
+
+      - record: kafka:throughput:5m
+        expr: 'sum(rate(kafka_messages_produced_total[5m])) by (topic)'
+
+      - record: database:query_latency_p99:5m
+        expr: 'histogram_quantile(0.99, sum(rate(database_query_duration_seconds_bucket[5m])) by (le, operation))'

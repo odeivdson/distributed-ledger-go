@@ -1,0 +1,110 @@
+global:
+  resolve_timeout: 5m
+  slack_api_url: '${SLACK_WEBHOOK_URL:-}'
+  pagerduty_url: 'https://events.pagerduty.com/v2/enqueue'
+
+templates:
+  - '/etc/alertmanager/templates/*.tmpl'
+
+route:
+  receiver: 'null'
+  group_by: ['alertname', 'cluster', 'service']
+  group_wait: 10s
+  group_interval: 10s
+  repeat_interval: 12h
+
+  routes:
+    - match:
+        severity: critical
+      receiver: 'critical'
+      continue: true
+      group_wait: 0s
+      group_interval: 1m
+      repeat_interval: 1h
+
+    - match:
+        severity: warning
+      receiver: 'warning'
+      group_wait: 30s
+      group_interval: 5m
+      repeat_interval: 4h
+
+    - match:
+        alertname: 'Watchdog'
+      receiver: 'watchdog'
+
+inhibit_rules:
+  - source_match:
+      severity: 'critical'
+    target_match:
+      severity: 'warning'
+    equal: ['alertname', 'cluster', 'service']
+
+  - source_match:
+      alertname: 'CircuitBreakerOpen'
+    target_match:
+      alertname: 'CriticalErrorRate'
+    equal: ['component']
+
+receivers:
+  - name: 'null'
+
+  - name: 'critical'
+    slack_configs:
+      - channel: '#alerts-critical'
+        icon_emoji: '🚨'
+        title: 'CRITICAL: {{ .GroupLabels.alertname }}'
+        text: '{{ range .Alerts }}{{ .Annotations.description }}{{ end }}'
+        send_resolved: true
+        color: '#FF0000'
+        actions:
+          - type: button
+            text: 'View Alert'
+            url: '{{ (index .Alerts 0).GeneratorURL }}'
+          - type: button
+            text: 'Silence'
+            url: '{{ .GroupLabels.severity }}'
+
+    pagerduty_configs:
+      - service_key: '${PAGERDUTY_SERVICE_KEY:-}'
+        description: '{{ .GroupLabels.alertname }}'
+        details:
+          firing: '{{ range .Alerts.Firing }}{{ .Labels.instance }} {{ .Annotations.summary }}{{ end }}'
+          resolved: '{{ range .Alerts.Resolved }}{{ .Labels.instance }}{{ end }}'
+
+    email_configs:
+      - to: '${ALERT_EMAIL:-admin@example.com}'
+        from: '${ALERT_FROM_EMAIL:-alertmanager@example.com}'
+        smarthost: '${SMTP_HOST:-}:${SMTP_PORT:-587}'
+        auth_username: '${SMTP_USER:-}'
+        auth_password: '${SMTP_PASSWORD:-}'
+        headers:
+          Subject: 'CRITICAL Alert: {{ .GroupLabels.alertname }}'
+        html: |
+          <h2>{{ .GroupLabels.alertname }}</h2>
+          <hr>
+          {{ range .Alerts }}
+          <h3>{{ .Labels.instance }}</h3>
+          <p><strong>Summary:</strong> {{ .Annotations.summary }}</p>
+          <p><strong>Description:</strong> {{ .Annotations.description }}</p>
+          <p><strong>Severity:</strong> {{ .Labels.severity }}</p>
+          <p><strong>Component:</strong> {{ .Labels.component }}</p>
+          {{ end }}
+
+  - name: 'warning'
+    slack_configs:
+      - channel: '#alerts-warning'
+        icon_emoji: '⚠️'
+        title: 'WARNING: {{ .GroupLabels.alertname }}'
+        text: '{{ range .Alerts }}{{ .Annotations.description }}{{ end }}'
+        send_resolved: true
+        color: '#FFA500'
+
+  - name: 'watchdog'
+    slack_configs:
+      - channel: '#monitoring'
+        icon_emoji: '🐕'
+        title: 'Watchdog: All is well'
+        text: 'Alertmanager is working correctly'
+        send_resolved: false
+        color: '#36a64f'
