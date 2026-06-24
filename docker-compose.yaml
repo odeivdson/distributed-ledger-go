@@ -27,15 +27,19 @@ services:
     container_name: init-kafka
     depends_on:
       - kafka
+    environment:
+      KAFKA_INIT_TOPICS: ${KAFKA_INIT_TOPICS:-transactions,notifications}
     entrypoint: [ '/bin/sh', '-c' ]
     command: |
       "
       echo 'Waiting for Kafka to be ready...'
       cub kafka-ready -b kafka:29092 1 20
       
-      echo 'Creating kafka topics...'
-      kafka-topics --bootstrap-server kafka:29092 --create --if-not-exists --topic transactions --replication-factor 1 --partitions 1
-      kafka-topics --bootstrap-server kafka:29092 --create --if-not-exists --topic notifications --replication-factor 1 --partitions 1
+      echo 'Creating kafka topics from env var...'
+      IFS=','
+      for topic in $$KAFKA_INIT_TOPICS; do
+        kafka-topics --bootstrap-server kafka:29092 --create --if-not-exists --topic $$topic --replication-factor 1 --partitions 1
+      done
       
       echo 'Successfully created topics:'
       kafka-topics --bootstrap-server kafka:29092 --list
@@ -53,6 +57,11 @@ services:
     volumes:
       - pgdata:/var/lib/postgresql/data
       - ./apps/ledger-core/internal/adapters/postgres/migrations:/docker-entrypoint-initdb.d
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U ${DB_USER:-staff_eng} -d ${DB_NAME:-ledger_db}"]
+      interval: 5s
+      timeout: 5s
+      retries: 5
 
   redis:
     image: redis:7.2-alpine
@@ -101,7 +110,7 @@ services:
       redis:
         condition: service_started
       postgres:
-        condition: service_started
+        condition: service_healthy
       init-kafka:
         condition: service_completed_successfully
 
@@ -120,7 +129,7 @@ services:
       kafka:
         condition: service_started
       postgres:
-        condition: service_started
+        condition: service_healthy
       init-kafka:
         condition: service_completed_successfully
 
@@ -151,7 +160,8 @@ services:
       DATABASE_URL: postgres://${DB_USER:-staff_eng}:${DB_PASSWORD:-super_secret_password}@postgres:5432/${DB_NAME:-ledger_db}?sslmode=disable
       LOG_LEVEL: ${LOG_LEVEL:-info}
     depends_on:
-      - postgres
+      postgres:
+        condition: service_healthy
 
   ledger-backoffice:
     build:
@@ -166,8 +176,10 @@ services:
       PORT: 8081
       LOG_LEVEL: ${LOG_LEVEL:-info}
     depends_on:
-      - postgres
-      - redis
+      postgres:
+        condition: service_healthy
+      redis:
+        condition: service_started
 
   prometheus:
     image: prom/prometheus:latest
